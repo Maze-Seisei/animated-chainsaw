@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Guild {
+  id        Int       @id @default(autoincrement())
+  guildId   String    @unique
+  name      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  settings  Settings?
+  gangs     Gang[]
+  gangLogs  GangLog[]
+  auditLogs AuditLog[]
+}
+
+model Settings {
+  id                    Int      @id @default(autoincrement())
+  guild                 Guild    @relation(fields: [guildId], references: [id])
+  guildId               Int
+  prefix                String   @default("!")
+  leaderRoleId          String?  // Discord role id (snowflake)
+  logsChannelId         String?  // Discord channel id
+  autoCreateChannels    Boolean  @default(false)
+  inviteExpirationMins  Int      @default(1440) // default 24 hours
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model Gang {
+  id         String       @id @default(uuid())
+  guild      Guild        @relation(fields: [guildId], references: [id])
+  guildId    Int
+  name       String
+  leaderId   String       // Discord user id (snowflake)
+  color      String?
+  icon       String?
+  createdAt  DateTime     @default(now())
+  disbandedAt DateTime?
+  members    GangMember[]
+  invites    GangInvite[]
+  logs       GangLog[]
+}
+
+model GangMember {
+  id        String   @id @default(uuid())
+  gang      Gang     @relation(fields: [gangId], references: [id])
+  gangId    String
+  userId    String   // Discord user id
+  role      MemberRole @default(MEMBER)
+  joinedAt  DateTime @default(now())
+  isActive  Boolean  @default(true)
+}
+
+enum MemberRole {
+  MEMBER
+  OFFICER
+  LEADER
+}
+
+model GangInvite {
+  id         String   @id @default(uuid())
+  gang       Gang     @relation(fields: [gangId], references: [id])
+  gangId     String
+  inviterId  String
+  inviteeId  String?   // optional explicit target
+  code       String?   // optional invite code
+  expiresAt  DateTime?
+  acceptedAt DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+model GangLog {
+  id        String   @id @default(uuid())
+  guild     Guild    @relation(fields: [guildId], references: [id])
+  guildId   Int
+  gang      Gang?    @relation(fields: [gangId], references: [id])
+  gangId    String?
+  type      String
+  message   String
+  data      Json?
+  actorId   String?   // Discord user id who caused event
+  createdAt DateTime  @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  guild     Guild    @relation(fields: [guildId], references: [id])
+  guildId   Int
+  action    String
+  actorId   String?
+  targetId  String?
+  details   Json?
+  createdAt DateTime @default(now())
+}
